@@ -33,6 +33,7 @@ describe('AccountController', () => {
             getBalance: jest.fn(),
             deposit: jest.fn(),
             withdraw: jest.fn(),
+            transfer: jest.fn(),
             block: jest.fn(),
             unblock: jest.fn(),
           },
@@ -105,6 +106,27 @@ describe('AccountController', () => {
 
       expect(service.block).toHaveBeenCalledWith(1);
       expect(result.message).toBe('Account blocked successfully');
+    });
+  });
+
+  describe('transfer', () => {
+    it('should call service.transfer with account ID and DTO', async () => {
+      service.transfer.mockResolvedValue({
+        accountId: 1,
+        balance: 700,
+        message: 'Transfer successful',
+      });
+
+      const result = await controller.transfer(1, {
+        toAccountId: 2,
+        value: 300,
+      });
+
+      expect(service.transfer).toHaveBeenCalledWith(1, {
+        toAccountId: 2,
+        value: 300,
+      });
+      expect(result.balance).toBe(700);
     });
   });
 

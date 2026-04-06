@@ -47,6 +47,7 @@ describe('AccountService', () => {
           provide: TransactionRepository,
           useValue: {
             createWithManager: jest.fn(),
+            createManyWithManager: jest.fn(),
           },
         },
       ],
@@ -247,6 +248,136 @@ describe('AccountService', () => {
       accountRepository.findById.mockResolvedValue(null);
 
       await expect(service.block(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('unblock', () => {
+    it('should unblock a blocked account', async () => {
+      const account = { ...mockAccount, activeFlag: false };
+      accountRepository.findById.mockResolvedValue(account);
+      accountRepository.save.mockResolvedValue({
+        ...account,
+        activeFlag: true,
+      });
+
+      const result = await service.unblock(1);
+
+      expect(result.message).toBe('Account unblocked successfully');
+    });
+
+    it('should throw BadRequestException if account is already active', async () => {
+      accountRepository.findById.mockResolvedValue(mockAccount);
+
+      await expect(service.unblock(1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException if account does not exist', async () => {
+      accountRepository.findById.mockResolvedValue(null);
+
+      await expect(service.unblock(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('transfer', () => {
+    const mockToAccount = {
+      accountId: 2,
+      personId: 2,
+      balance: 200,
+      dailyWithdrawalLimit: 500,
+      activeFlag: true,
+      accountType: 1,
+      createDate: new Date(),
+    } as Account;
+
+    it('should transfer money between accounts', async () => {
+      const fromAccount = { ...mockAccount, balance: 1000 };
+      const toAccount = { ...mockToAccount, balance: 200 };
+
+      accountRepository.executeInTransaction.mockImplementation(
+        async (work) => {
+          const manager = {
+            save: jest.fn().mockResolvedValue([fromAccount, toAccount]),
+          } as any;
+          accountRepository.findByIdWithLock
+            .mockResolvedValueOnce(fromAccount)
+            .mockResolvedValueOnce(toAccount);
+          transactionRepository.createManyWithManager.mockResolvedValue(
+            [] as any,
+          );
+          return work(manager);
+        },
+      );
+
+      const result = await service.transfer(1, {
+        toAccountId: 2,
+        value: 300,
+      });
+
+      expect(result.balance).toBe(700);
+      expect(result.message).toBe('Transfer successful');
+    });
+
+    it('should throw BadRequestException when transferring to same account', async () => {
+      await expect(
+        service.transfer(1, { toAccountId: 1, value: 100 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for insufficient funds', async () => {
+      const fromAccount = { ...mockAccount, balance: 50 };
+      const toAccount = { ...mockToAccount };
+
+      accountRepository.executeInTransaction.mockImplementation(
+        async (work) => {
+          const manager = { save: jest.fn() } as any;
+          accountRepository.findByIdWithLock
+            .mockResolvedValueOnce(fromAccount)
+            .mockResolvedValueOnce(toAccount);
+          return work(manager);
+        },
+      );
+
+      await expect(
+        service.transfer(1, { toAccountId: 2, value: 500 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if source account is blocked', async () => {
+      const blockedFrom = { ...mockAccount, activeFlag: false };
+      const toAccount = { ...mockToAccount };
+
+      accountRepository.executeInTransaction.mockImplementation(
+        async (work) => {
+          const manager = { save: jest.fn() } as any;
+          accountRepository.findByIdWithLock
+            .mockResolvedValueOnce(blockedFrom)
+            .mockResolvedValueOnce(toAccount);
+          return work(manager);
+        },
+      );
+
+      await expect(
+        service.transfer(1, { toAccountId: 2, value: 100 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if destination account is blocked', async () => {
+      const fromAccount = { ...mockAccount };
+      const blockedTo = { ...mockToAccount, activeFlag: false };
+
+      accountRepository.executeInTransaction.mockImplementation(
+        async (work) => {
+          const manager = { save: jest.fn() } as any;
+          accountRepository.findByIdWithLock
+            .mockResolvedValueOnce(fromAccount)
+            .mockResolvedValueOnce(blockedTo);
+          return work(manager);
+        },
+      );
+
+      await expect(
+        service.transfer(1, { toAccountId: 2, value: 100 }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
