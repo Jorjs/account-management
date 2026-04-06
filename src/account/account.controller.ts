@@ -12,6 +12,9 @@ import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { DepositDto } from './dto/deposit.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { AccountResponseDto } from './dto/account-response.dto';
+import { OperationResponseDto } from './dto/operation-response.dto';
+import { BalanceResponseDto } from './dto/balance-response.dto';
 
 @ApiTags('Accounts')
 @Controller('accounts')
@@ -20,42 +23,44 @@ export class AccountController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new account' })
-  @ApiResponse({ status: 201, description: 'Account created successfully' })
-  create(@Body() dto: CreateAccountDto) {
+  @ApiResponse({ status: 201, type: AccountResponseDto })
+  create(@Body() dto: CreateAccountDto): Promise<AccountResponseDto> {
     return this.accountService.create(dto);
   }
 
   @Get(':id/balance')
   @ApiOperation({ summary: 'Get account balance' })
-  @ApiResponse({ status: 200, description: 'Returns account balance' })
-  getBalance(@Param('id', ParseIntPipe) id: number) {
+  @ApiResponse({ status: 200, type: BalanceResponseDto })
+  getBalance(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<BalanceResponseDto> {
     return this.accountService.getBalance(id);
   }
 
   @Post(':id/deposit')
   @ApiOperation({ summary: 'Deposit into account' })
-  @ApiResponse({ status: 200, description: 'Deposit successful' })
+  @ApiResponse({ status: 200, type: OperationResponseDto })
   deposit(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DepositDto,
-  ) {
+  ): Promise<OperationResponseDto> {
     return this.accountService.deposit(id, dto);
   }
 
   @Post(':id/withdraw')
   @ApiOperation({ summary: 'Withdraw from account' })
-  @ApiResponse({ status: 200, description: 'Withdrawal successful' })
+  @ApiResponse({ status: 200, type: OperationResponseDto })
   withdraw(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: WithdrawDto,
-  ) {
+  ): Promise<OperationResponseDto> {
     return this.accountService.withdraw(id, dto);
   }
 
   @Patch(':id/block')
   @ApiOperation({ summary: 'Block an account' })
-  @ApiResponse({ status: 200, description: 'Account blocked successfully' })
-  block(@Param('id', ParseIntPipe) id: number) {
+  @ApiResponse({ status: 200, type: OperationResponseDto })
+  block(@Param('id', ParseIntPipe) id: number): Promise<OperationResponseDto> {
     return this.accountService.block(id);
   }
 }
