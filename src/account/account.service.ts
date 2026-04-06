@@ -3,36 +3,33 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { Account } from './account.entity';
-import { Transaction } from '../transaction/transaction.entity';
-import { Person } from '../person/person.entity';
+import { AccountRepository } from './account.repository';
+import { PersonRepository } from '../person/person.repository';
+import { TransactionRepository } from '../transaction/transaction.repository';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { DepositDto } from './dto/deposit.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { AccountResponseDto } from './dto/account-response.dto';
+import { OperationResponseDto } from './dto/operation-response.dto';
+import { BalanceResponseDto } from './dto/balance-response.dto';
 
 @Injectable()
 export class AccountService {
   constructor(
-    @InjectRepository(Account)
-    private readonly accountRepository: Repository<Account>,
-    @InjectRepository(Transaction)
-    private readonly transactionRepository: Repository<Transaction>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
-    private readonly dataSource: DataSource,
+    private readonly accountRepository: AccountRepository,
+    private readonly personRepository: PersonRepository,
+    private readonly transactionRepository: TransactionRepository,
   ) {}
 
-  async create(dto: CreateAccountDto): Promise<Account> {
-    const person = await this.personRepository.findOneBy({
-      personId: dto.personId,
-    });
+  async create(dto: CreateAccountDto): Promise<AccountResponseDto> {
+    const person = await this.personRepository.findById(dto.personId);
     if (!person) {
       throw new NotFoundException(`Person with ID ${dto.personId} not found`);
     }
 
-    const account = this.accountRepository.create({
+    const account = await this.accountRepository.create({
       personId: dto.personId,
       balance: 0,
       dailyWithdrawalLimit: dto.dailyWithdrawalLimit,
@@ -40,100 +37,98 @@ export class AccountService {
       accountType: dto.accountType,
     });
 
-    return this.accountRepository.save(account);
+    return this.toAccountResponse(account);
   }
 
-  async getBalance(accountId: number): Promise<{ balance: number }> {
+  async getBalance(accountId: number): Promise<BalanceResponseDto> {
     const account = await this.findAccountOrFail(accountId);
-    return { balance: Number(account.balance) };
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+    };
   }
 
-  async deposit(accountId: number, dto: DepositDto): Promise<Account> {
-    return this.dataSource.transaction(async (manager) => {
-      const account = await manager.findOne(Account, {
-        where: { accountId },
-        lock: { mode: 'pessimistic_write' },
-      });
+  async deposit(
+    accountId: number,
+    dto: DepositDto,
+  ): Promise<OperationResponseDto> {
+    const account = await this.accountRepository.executeInTransaction(
+      async (manager) => {
+        const acc = await this.findLockedAccountOrFail(accountId, manager);
 
-      if (!account) {
-        throw new NotFoundException(
-          `Account with ID ${accountId} not found`,
+        this.assertAccountActive(acc);
+
+        acc.balance = Number(acc.balance) + dto.value;
+        await manager.save(Account, acc);
+
+        await this.transactionRepository.createWithManager(
+          { accountId, value: dto.value },
+          manager,
         );
-      }
 
-      if (!account.activeFlag) {
-        throw new BadRequestException('Account is blocked');
-      }
+        return acc;
+      },
+    );
 
-      account.balance = Number(account.balance) + dto.value;
-      await manager.save(Account, account);
-
-      const transaction = manager.create(Transaction, {
-        accountId,
-        value: dto.value,
-      });
-      await manager.save(Transaction, transaction);
-
-      return account;
-    });
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+      message: 'Deposit successful',
+    };
   }
 
-  async withdraw(accountId: number, dto: WithdrawDto): Promise<Account> {
-    return this.dataSource.transaction(async (manager) => {
-      const account = await manager.findOne(Account, {
-        where: { accountId },
-        lock: { mode: 'pessimistic_write' },
-      });
+  async withdraw(
+    accountId: number,
+    dto: WithdrawDto,
+  ): Promise<OperationResponseDto> {
+    const account = await this.accountRepository.executeInTransaction(
+      async (manager) => {
+        const acc = await this.findLockedAccountOrFail(accountId, manager);
 
-      if (!account) {
-        throw new NotFoundException(
-          `Account with ID ${accountId} not found`,
+        this.assertAccountActive(acc);
+
+        const currentBalance = Number(acc.balance);
+        if (dto.value > currentBalance) {
+          throw new BadRequestException('Insufficient funds');
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const totalWithdrawnToday =
+          await this.accountRepository.getDailyWithdrawnAmount(
+            accountId,
+            today,
+            manager,
+          );
+
+        if (
+          totalWithdrawnToday + dto.value >
+          Number(acc.dailyWithdrawalLimit)
+        ) {
+          throw new BadRequestException('Daily withdrawal limit exceeded');
+        }
+
+        acc.balance = currentBalance - dto.value;
+        await manager.save(Account, acc);
+
+        await this.transactionRepository.createWithManager(
+          { accountId, value: -dto.value },
+          manager,
         );
-      }
 
-      if (!account.activeFlag) {
-        throw new BadRequestException('Account is blocked');
-      }
+        return acc;
+      },
+    );
 
-      const currentBalance = Number(account.balance);
-      if (dto.value > currentBalance) {
-        throw new BadRequestException('Insufficient funds');
-      }
-
-      // Check daily withdrawal limit
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const dailyWithdrawn = await manager
-        .createQueryBuilder(Transaction, 't')
-        .select('COALESCE(SUM(ABS(t.value)), 0)', 'total')
-        .where('t.account_id = :accountId', { accountId })
-        .andWhere('t.value < 0')
-        .andWhere('t.transaction_date >= :today', { today })
-        .getRawOne();
-
-      const totalWithdrawnToday = Number(dailyWithdrawn.total);
-      if (
-        totalWithdrawnToday + dto.value >
-        Number(account.dailyWithdrawalLimit)
-      ) {
-        throw new BadRequestException('Daily withdrawal limit exceeded');
-      }
-
-      account.balance = currentBalance - dto.value;
-      await manager.save(Account, account);
-
-      const transaction = manager.create(Transaction, {
-        accountId,
-        value: -dto.value,
-      });
-      await manager.save(Transaction, transaction);
-
-      return account;
-    });
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+      message: 'Withdrawal successful',
+    };
   }
 
-  async block(accountId: number): Promise<Account> {
+  async block(accountId: number): Promise<OperationResponseDto> {
     const account = await this.findAccountOrFail(accountId);
 
     if (!account.activeFlag) {
@@ -141,14 +136,52 @@ export class AccountService {
     }
 
     account.activeFlag = false;
-    return this.accountRepository.save(account);
+    await this.accountRepository.save(account);
+
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+      message: 'Account blocked successfully',
+    };
+  }
+
+  private toAccountResponse(account: Account): AccountResponseDto {
+    return {
+      accountId: account.accountId,
+      personId: account.personId,
+      balance: Number(account.balance),
+      dailyWithdrawalLimit: Number(account.dailyWithdrawalLimit),
+      activeFlag: account.activeFlag,
+      accountType: account.accountType,
+      createDate: account.createDate,
+    };
   }
 
   private async findAccountOrFail(accountId: number): Promise<Account> {
-    const account = await this.accountRepository.findOneBy({ accountId });
+    const account = await this.accountRepository.findById(accountId);
     if (!account) {
       throw new NotFoundException(`Account with ID ${accountId} not found`);
     }
     return account;
+  }
+
+  private async findLockedAccountOrFail(
+    accountId: number,
+    manager: EntityManager,
+  ): Promise<Account> {
+    const account = await this.accountRepository.findByIdWithLock(
+      accountId,
+      manager,
+    );
+    if (!account) {
+      throw new NotFoundException(`Account with ID ${accountId} not found`);
+    }
+    return account;
+  }
+
+  private assertAccountActive(account: Account): void {
+    if (!account.activeFlag) {
+      throw new BadRequestException('Account is blocked');
+    }
   }
 }
