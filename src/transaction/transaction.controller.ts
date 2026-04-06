@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { TransactionService } from './transaction.service';
 import { StatementQueryDto } from './dto/statement-query.dto';
-import { TransactionResponseDto } from './dto/transaction-response.dto';
+import { PaginatedStatementResponseDto } from './dto/paginated-statement-response.dto';
 
 @ApiTags('Transactions')
 @Controller('accounts')
@@ -13,11 +13,11 @@ export class TransactionController {
   @ApiOperation({
     summary: 'Get account statement (optionally filtered by date range)',
   })
-  @ApiResponse({ status: 200, type: [TransactionResponseDto] })
+  @ApiResponse({ status: 200, type: PaginatedStatementResponseDto })
   getStatement(
     @Param('id', ParseIntPipe) id: number,
     @Query() query: StatementQueryDto,
-  ): Promise<TransactionResponseDto[]> {
+  ): Promise<PaginatedStatementResponseDto> {
     return this.transactionService.getStatement(id, query);
   }
 }

@@ -20,24 +20,35 @@ export class TransactionRepository {
 
   async findByAccountId(
     accountId: number,
-    startDate?: string,
-    endDate?: string,
-  ): Promise<Transaction[]> {
+    options: {
+      startDate?: string;
+      endDate?: string;
+      page: number;
+      limit: number;
+    },
+  ): Promise<{ data: Transaction[]; total: number }> {
     const qb = this.repository
       .createQueryBuilder('t')
       .where('t.account_id = :accountId', { accountId })
       .orderBy('t.transaction_date', 'DESC');
 
-    if (startDate) {
-      qb.andWhere('t.transaction_date >= :startDate', { startDate });
-    }
-
-    if (endDate) {
-      qb.andWhere('t.transaction_date <= :endDate', {
-        endDate: endDate + ' 23:59:59',
+    if (options.startDate) {
+      qb.andWhere('t.transaction_date >= :startDate', {
+        startDate: options.startDate,
       });
     }
 
-    return qb.getMany();
+    if (options.endDate) {
+      qb.andWhere('t.transaction_date <= :endDate', {
+        endDate: options.endDate + ' 23:59:59',
+      });
+    }
+
+    const [data, total] = await qb
+      .skip((options.page - 1) * options.limit)
+      .take(options.limit)
+      .getManyAndCount();
+
+    return { data, total };
   }
 }

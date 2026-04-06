@@ -156,15 +156,17 @@ describe('Account Management (e2e)', () => {
   });
 
   describe('GET /accounts/:id/statements', () => {
-    it('should return account statement', async () => {
+    it('should return paginated account statement', async () => {
       const res = await request(app.getHttpServer())
         .get(`/accounts/${accountId}/statements`)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(2);
-      expect(res.body[0].transactionId).toBeDefined();
-      expect(res.body[0].value).toBeDefined();
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.total).toBe(2);
+      expect(res.body.page).toBe(1);
+      expect(res.body.limit).toBe(20);
+      expect(res.body.data[0].transactionId).toBeDefined();
+      expect(res.body.data[0].value).toBeDefined();
     });
 
     it('should filter by date range', () => {
@@ -174,7 +176,8 @@ describe('Account Management (e2e)', () => {
         )
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveLength(0);
+          expect(res.body.data).toHaveLength(0);
+          expect(res.body.total).toBe(0);
         });
     });
 

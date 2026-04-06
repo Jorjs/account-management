@@ -49,40 +49,46 @@ describe('TransactionService', () => {
   });
 
   describe('getStatement', () => {
-    it('should return all transactions for an account', async () => {
+    it('should return paginated transactions for an account', async () => {
       accountRepository.findById.mockResolvedValue({
         accountId: 1,
       } as any);
-      transactionRepository.findByAccountId.mockResolvedValue(
-        mockTransactions,
-      );
+      transactionRepository.findByAccountId.mockResolvedValue({
+        data: mockTransactions,
+        total: 2,
+      });
 
       const result = await service.getStatement(1, {});
 
-      expect(result).toHaveLength(2);
-      expect(result[0].transactionId).toBe(2);
-      expect(result[1].value).toBe(500);
+      expect(result.data).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
+      expect(result.data[0].transactionId).toBe(2);
+      expect(result.data[1].value).toBe(500);
     });
 
     it('should filter transactions by date range', async () => {
       accountRepository.findById.mockResolvedValue({
         accountId: 1,
       } as any);
-      transactionRepository.findByAccountId.mockResolvedValue([
-        mockTransactions[0],
-      ]);
+      transactionRepository.findByAccountId.mockResolvedValue({
+        data: [mockTransactions[0]],
+        total: 1,
+      });
 
       const result = await service.getStatement(1, {
         startDate: '2026-04-06',
         endDate: '2026-04-06',
       });
 
-      expect(result).toHaveLength(1);
-      expect(transactionRepository.findByAccountId).toHaveBeenCalledWith(
-        1,
-        '2026-04-06',
-        '2026-04-06',
-      );
+      expect(result.data).toHaveLength(1);
+      expect(transactionRepository.findByAccountId).toHaveBeenCalledWith(1, {
+        startDate: '2026-04-06',
+        endDate: '2026-04-06',
+        page: 1,
+        limit: 20,
+      });
     });
 
     it('should throw NotFoundException if account does not exist', async () => {
