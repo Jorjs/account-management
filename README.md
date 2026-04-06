@@ -44,13 +44,10 @@ cd account-management
 docker compose up --build
 ```
 
-3. Seed the database with test persons:
-```bash
-docker compose exec db psql -U postgres -d account_management -f /dev/stdin < src/database/seeds/seed.sql
-```
+The database is automatically seeded with test persons on first startup.
 
-4. The API is available at `http://localhost:3000`
-5. Swagger documentation at `http://localhost:3000/api/docs`
+3. The API is available at `http://localhost:3000`
+4. Swagger documentation at `http://localhost:3000/api/docs`
 
 ## API Endpoints
 
