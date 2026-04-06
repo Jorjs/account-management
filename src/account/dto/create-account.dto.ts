@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNumber, IsPositive, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsPositive, IsInt } from 'class-validator';
+import { AccountType } from '../enums/account-type.enum';
 
 export class CreateAccountDto {
   @ApiProperty({ description: 'ID of the person who owns the account' })
@@ -11,8 +12,11 @@ export class CreateAccountDto {
   @IsPositive()
   dailyWithdrawalLimit: number;
 
-  @ApiProperty({ description: 'Account type identifier', example: 1 })
-  @IsInt()
-  @Min(1)
-  accountType: number;
+  @ApiProperty({
+    description: 'Account type (1 = Checking, 2 = Savings)',
+    enum: AccountType,
+    example: AccountType.CHECKING,
+  })
+  @IsEnum(AccountType)
+  accountType: AccountType;
 }
