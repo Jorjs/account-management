@@ -7,12 +7,15 @@ A REST API for banking account management built with NestJS, TypeORM, and Postgr
 ```
 src/
 ├── account/                # Account module (create, deposit, withdraw, block, balance)
+│   ├── __tests__/          # Unit tests
 │   ├── dto/                # Request and response DTOs
+│   ├── enums/              # Account type enum
 │   ├── account.entity.ts   # TypeORM entity
 │   ├── account.repository.ts # Data access layer
 │   ├── account.service.ts  # Business logic
 │   └── account.controller.ts # REST endpoints
 ├── transaction/            # Transaction module (statements with period filtering)
+│   ├── __tests__/          # Unit tests
 │   ├── dto/
 │   ├── transaction.entity.ts
 │   ├── transaction.repository.ts
@@ -58,13 +61,14 @@ The database is automatically seeded with test persons on first startup.
 | POST | /accounts/:id/deposit | Deposit into account |
 | POST | /accounts/:id/withdraw | Withdraw from account |
 | PATCH | /accounts/:id/block | Block an account |
+| PATCH | /accounts/:id/unblock | Unblock an account |
 | GET | /accounts/:id/statements | Get transaction statement |
 
 ### Statement by period
 
-Filter transactions by date range using query parameters:
+Filter transactions by date range and paginate using query parameters:
 ```
-GET /accounts/:id/statements?startDate=2026-01-01&endDate=2026-12-31
+GET /accounts/:id/statements?startDate=2026-01-01&endDate=2026-12-31&page=1&limit=20
 ```
 
 ## Running Tests
