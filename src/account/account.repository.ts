@@ -40,7 +40,7 @@ export class AccountRepository {
     today: Date,
     manager: EntityManager,
   ): Promise<number> {
-    const result = await manager
+    const result: { total: string } | undefined = await manager
       .createQueryBuilder(Transaction, 't')
       .select('COALESCE(SUM(ABS(t.value)), 0)', 'total')
       .where('t.account_id = :accountId', { accountId })
