@@ -145,6 +145,23 @@ export class AccountService {
     };
   }
 
+  async unblock(accountId: number): Promise<OperationResponseDto> {
+    const account = await this.findAccountOrFail(accountId);
+
+    if (account.activeFlag) {
+      throw new BadRequestException('Account is already active');
+    }
+
+    account.activeFlag = true;
+    await this.accountRepository.save(account);
+
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+      message: 'Account unblocked successfully',
+    };
+  }
+
   private toAccountResponse(account: Account): AccountResponseDto {
     return {
       accountId: account.accountId,

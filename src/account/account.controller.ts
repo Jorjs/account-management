@@ -66,4 +66,11 @@ export class AccountController {
   block(@Param('id', ParseIntPipe) id: number): Promise<OperationResponseDto> {
     return this.accountService.block(id);
   }
+
+  @Patch(':id/unblock')
+  @ApiOperation({ summary: 'Unblock an account' })
+  @ApiResponse({ status: 200, type: OperationResponseDto })
+  unblock(@Param('id', ParseIntPipe) id: number): Promise<OperationResponseDto> {
+    return this.accountService.unblock(id);
+  }
 }
