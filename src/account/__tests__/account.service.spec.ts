@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { AccountService } from './account.service';
-import { AccountRepository } from './account.repository';
-import { PersonRepository } from '../person/person.repository';
-import { TransactionRepository } from '../transaction/transaction.repository';
-import { Account } from './account.entity';
+import { AccountService } from '../account.service';
+import { AccountRepository } from '../account.repository';
+import { PersonRepository } from '../../person/person.repository';
+import { TransactionRepository } from '../../transaction/transaction.repository';
+import { Account } from '../account.entity';
 
 describe('AccountService', () => {
   let service: AccountService;

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { TransactionService } from './transaction.service';
-import { TransactionRepository } from './transaction.repository';
-import { AccountRepository } from '../account/account.repository';
+import { TransactionService } from '../transaction.service';
+import { TransactionRepository } from '../transaction.repository';
+import { AccountRepository } from '../../account/account.repository';
 
 describe('TransactionService', () => {
   let service: TransactionService;
