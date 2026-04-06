@@ -60,6 +60,7 @@ The database is automatically seeded with test persons on first startup.
 | GET | /accounts/:id/balance | Get account balance |
 | POST | /accounts/:id/deposit | Deposit into account |
 | POST | /accounts/:id/withdraw | Withdraw from account |
+| POST | /accounts/:id/transfer | Transfer to another account |
 | PATCH | /accounts/:id/block | Block an account |
 | PATCH | /accounts/:id/unblock | Unblock an account |
 | GET | /accounts/:id/statements | Get transaction statement |

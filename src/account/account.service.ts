@@ -11,6 +11,7 @@ import { TransactionRepository } from '../transaction/transaction.repository';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { DepositDto } from './dto/deposit.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { TransferDto } from './dto/transfer.dto';
 import { AccountResponseDto } from './dto/account-response.dto';
 import { OperationResponseDto } from './dto/operation-response.dto';
 import { BalanceResponseDto } from './dto/balance-response.dto';
@@ -142,6 +143,59 @@ export class AccountService {
       accountId: account.accountId,
       balance: Number(account.balance),
       message: 'Account blocked successfully',
+    };
+  }
+
+  async transfer(
+    fromAccountId: number,
+    dto: TransferDto,
+  ): Promise<OperationResponseDto> {
+    if (fromAccountId === dto.toAccountId) {
+      throw new BadRequestException('Cannot transfer to the same account');
+    }
+
+    const account = await this.accountRepository.executeInTransaction(
+      async (manager) => {
+        const fromAccount = await this.findLockedAccountOrFail(
+          fromAccountId,
+          manager,
+        );
+        const toAccount = await this.findLockedAccountOrFail(
+          dto.toAccountId,
+          manager,
+        );
+
+        this.assertAccountActive(fromAccount);
+        this.assertAccountActive(toAccount);
+
+        const fromBalance = Number(fromAccount.balance);
+        if (dto.value > fromBalance) {
+          throw new BadRequestException('Insufficient funds');
+        }
+
+        fromAccount.balance = fromBalance - dto.value;
+        toAccount.balance = Number(toAccount.balance) + dto.value;
+
+        await manager.save(Account, fromAccount);
+        await manager.save(Account, toAccount);
+
+        await this.transactionRepository.createWithManager(
+          { accountId: fromAccountId, value: -dto.value },
+          manager,
+        );
+        await this.transactionRepository.createWithManager(
+          { accountId: dto.toAccountId, value: dto.value },
+          manager,
+        );
+
+        return fromAccount;
+      },
+    );
+
+    return {
+      accountId: account.accountId,
+      balance: Number(account.balance),
+      message: 'Transfer successful',
     };
   }
 

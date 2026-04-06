@@ -13,6 +13,7 @@ import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { DepositDto } from './dto/deposit.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { TransferDto } from './dto/transfer.dto';
 import { AccountResponseDto } from './dto/account-response.dto';
 import { OperationResponseDto } from './dto/operation-response.dto';
 import { BalanceResponseDto } from './dto/balance-response.dto';
@@ -58,6 +59,17 @@ export class AccountController {
     @Body() dto: WithdrawDto,
   ): Promise<OperationResponseDto> {
     return this.accountService.withdraw(id, dto);
+  }
+
+  @Post(':id/transfer')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Transfer money to another account' })
+  @ApiResponse({ status: 200, type: OperationResponseDto })
+  transfer(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TransferDto,
+  ): Promise<OperationResponseDto> {
+    return this.accountService.transfer(id, dto);
   }
 
   @Patch(':id/block')
