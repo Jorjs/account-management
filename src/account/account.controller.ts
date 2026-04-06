@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   ParseIntPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AccountService } from './account.service';
@@ -38,6 +39,7 @@ export class AccountController {
   }
 
   @Post(':id/deposit')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Deposit into account' })
   @ApiResponse({ status: 200, type: OperationResponseDto })
   deposit(
@@ -48,6 +50,7 @@ export class AccountController {
   }
 
   @Post(':id/withdraw')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Withdraw from account' })
   @ApiResponse({ status: 200, type: OperationResponseDto })
   withdraw(
