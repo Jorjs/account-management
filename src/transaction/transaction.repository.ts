@@ -18,6 +18,14 @@ export class TransactionRepository {
     return manager.save(Transaction, transaction);
   }
 
+  async createManyWithManager(
+    data: Partial<Transaction>[],
+    manager: EntityManager,
+  ): Promise<Transaction[]> {
+    const transactions = data.map((d) => manager.create(Transaction, d));
+    return manager.save(Transaction, transactions);
+  }
+
   async findByAccountId(
     accountId: number,
     options: {

@@ -176,15 +176,13 @@ export class AccountService {
         fromAccount.balance = fromBalance - dto.value;
         toAccount.balance = Number(toAccount.balance) + dto.value;
 
-        await manager.save(Account, fromAccount);
-        await manager.save(Account, toAccount);
+        await manager.save(Account, [fromAccount, toAccount]);
 
-        await this.transactionRepository.createWithManager(
-          { accountId: fromAccountId, value: -dto.value },
-          manager,
-        );
-        await this.transactionRepository.createWithManager(
-          { accountId: dto.toAccountId, value: dto.value },
+        await this.transactionRepository.createManyWithManager(
+          [
+            { accountId: fromAccountId, value: -dto.value },
+            { accountId: dto.toAccountId, value: dto.value },
+          ],
           manager,
         );
 

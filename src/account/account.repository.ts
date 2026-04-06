@@ -42,7 +42,7 @@ export class AccountRepository {
   ): Promise<number> {
     const result: { total: string } | undefined = await manager
       .createQueryBuilder(Transaction, 't')
-      .select('COALESCE(SUM(ABS(t.value)), 0)', 'total')
+      .select('COALESCE(SUM(-t.value), 0)', 'total')
       .where('t.account_id = :accountId', { accountId })
       .andWhere('t.value < 0')
       .andWhere('t.transaction_date >= :today', { today })
