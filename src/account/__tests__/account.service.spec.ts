@@ -33,6 +33,7 @@ describe('AccountService', () => {
             create: jest.fn(),
             save: jest.fn(),
             findByIdWithLock: jest.fn(),
+            findManyByIdsWithLock: jest.fn(),
             getDailyWithdrawnAmount: jest.fn(),
             executeInTransaction: jest.fn(),
           },
@@ -298,9 +299,10 @@ describe('AccountService', () => {
           const manager = {
             save: jest.fn().mockResolvedValue([fromAccount, toAccount]),
           } as any;
-          accountRepository.findByIdWithLock
-            .mockResolvedValueOnce(fromAccount)
-            .mockResolvedValueOnce(toAccount);
+          accountRepository.findManyByIdsWithLock.mockResolvedValue([
+            fromAccount,
+            toAccount,
+          ]);
           transactionRepository.createManyWithManager.mockResolvedValue(
             [] as any,
           );
@@ -330,9 +332,10 @@ describe('AccountService', () => {
       accountRepository.executeInTransaction.mockImplementation(
         async (work) => {
           const manager = { save: jest.fn() } as any;
-          accountRepository.findByIdWithLock
-            .mockResolvedValueOnce(fromAccount)
-            .mockResolvedValueOnce(toAccount);
+          accountRepository.findManyByIdsWithLock.mockResolvedValue([
+            fromAccount,
+            toAccount,
+          ]);
           return work(manager);
         },
       );
@@ -349,9 +352,10 @@ describe('AccountService', () => {
       accountRepository.executeInTransaction.mockImplementation(
         async (work) => {
           const manager = { save: jest.fn() } as any;
-          accountRepository.findByIdWithLock
-            .mockResolvedValueOnce(blockedFrom)
-            .mockResolvedValueOnce(toAccount);
+          accountRepository.findManyByIdsWithLock.mockResolvedValue([
+            blockedFrom,
+            toAccount,
+          ]);
           return work(manager);
         },
       );
@@ -368,9 +372,10 @@ describe('AccountService', () => {
       accountRepository.executeInTransaction.mockImplementation(
         async (work) => {
           const manager = { save: jest.fn() } as any;
-          accountRepository.findByIdWithLock
-            .mockResolvedValueOnce(fromAccount)
-            .mockResolvedValueOnce(blockedTo);
+          accountRepository.findManyByIdsWithLock.mockResolvedValue([
+            fromAccount,
+            blockedTo,
+          ]);
           return work(manager);
         },
       );

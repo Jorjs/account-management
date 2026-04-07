@@ -156,14 +156,21 @@ export class AccountService {
 
     const account = await this.accountRepository.executeInTransaction(
       async (manager) => {
-        const fromAccount = await this.findLockedAccountOrFail(
-          fromAccountId,
+        // Lock both accounts in one query, ordered by ID to prevent deadlocks
+        const accounts = await this.accountRepository.findManyByIdsWithLock(
+          [fromAccountId, dto.toAccountId],
           manager,
         );
-        const toAccount = await this.findLockedAccountOrFail(
-          dto.toAccountId,
-          manager,
-        );
+
+        const fromAccount = accounts.find((a) => a.accountId === fromAccountId);
+        const toAccount = accounts.find((a) => a.accountId === dto.toAccountId);
+
+        if (!fromAccount) {
+          throw new NotFoundException(`Account with ID ${fromAccountId} not found`);
+        }
+        if (!toAccount) {
+          throw new NotFoundException(`Account with ID ${dto.toAccountId} not found`);
+        }
 
         this.assertAccountActive(fromAccount);
         this.assertAccountActive(toAccount);

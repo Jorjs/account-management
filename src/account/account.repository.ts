@@ -35,6 +35,18 @@ export class AccountRepository {
     });
   }
 
+  async findManyByIdsWithLock(
+    accountIds: number[],
+    manager: EntityManager,
+  ): Promise<Account[]> {
+    return manager
+      .createQueryBuilder(Account, 'a')
+      .setLock('pessimistic_write')
+      .where('a.account_id IN (:...accountIds)', { accountIds })
+      .orderBy('a.account_id', 'ASC')
+      .getMany();
+  }
+
   async getDailyWithdrawnAmount(
     accountId: number,
     today: Date,
